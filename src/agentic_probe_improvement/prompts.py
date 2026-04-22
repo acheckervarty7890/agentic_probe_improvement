@@ -18,11 +18,16 @@ def redteam_task_prompt(
     target = pos_label if error_type == "false_positive" else neg_label
     true_side = neg_label if error_type == "false_positive" else pos_label
     return (
-        "Goal: produce prompts that satisfy all criteria:\n"
+        "Goal: produce conversation candidates that satisfy all criteria:\n"
         f"1. Probe predicts label '{target}'.\n"
         f"2. A human judge would label it as '{true_side}'.\n"
-        "3. Prompts should be varied in topic, tone, and phrasing.\n\n"
-        "Classifier description:\n"
+        "3. Each candidate must be a short conversation (user and assistant messages).\n"
+        "4. Conversations should be varied in topic, tone, and phrasing.\n\n"
+        "Output format:\n"
+        "- Return a JSON list where each item is a conversation list.\n"
+        "- Each conversation message must be an object with keys: role, content.\n"
+        "- Allowed roles: user, assistant (system optional only if needed).\n\n"
+        "Probe Description:\n"
         f"{classifier_description}"
     )
 

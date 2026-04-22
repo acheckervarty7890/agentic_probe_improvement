@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any
 
 
-@dataclass
-class BatchActivationsSummary:
-    shape: tuple[int, ...]
-    mean_abs_activation: float
+MessageLike = dict[str, str]
+ConversationLike = list[MessageLike]
+RunnerInput = str | ConversationLike
+
 
 
 class TuberLensProbeRunner:
@@ -86,32 +86,34 @@ class TuberLensProbeRunner:
     def description(self) -> str:
         return getattr(self._probe, "description", "Binary classification probe")
 
-    def _to_tuberlens_inputs(self, prompts: list[str]):
+    def _to_tuberlens_inputs(self, inputs: list[RunnerInput]):
         from tuberlens.interfaces.dataset import Message  # type: ignore
 
-        return [[Message(role="user", content=prompt)] for prompt in prompts]
+        normalized_inputs: list[list[Any]] = []
+        for sample in inputs:
+            if isinstance(sample, str):
+                normalized_inputs.append([Message(role="user", content=sample)])
+                continue
 
-    def extract_activation_summary(
-        self,
-        prompts: list[str],
-        max_length: int = 512,
-    ) -> BatchActivationsSummary:
-        """Extract activations via TuberLens from the probe's configured layer."""
-        inputs = self._to_tuberlens_inputs(prompts)
-        activation = self._model.get_activations(
-            inputs=inputs,
-            layer=self._probe.layer,
-            max_length=max_length,
-            show_progress=False,
+            conversation: list[Any] = []
+            for idx, message in enumerate(sample):
+                role = message.get("role")
+                content = message.get("content")
+                if not isinstance(role, str) or not isinstance(content, str):
+                    raise ValueError(
+                        "Invalid conversation message at index "
+                        f"{idx}. Expected dict with string role/content."
+                    )
+                conversation.append(Message(role=role, content=content))
+
+            normalized_inputs.append(conversation)
+
+        return normalized_inputs
+
+
+    def predict_scores(self, inputs: list[RunnerInput]) -> list[float]:
+        tuberlens_inputs = self._to_tuberlens_inputs(inputs)
+        scores = self._probe.predict_proba_from_inputs(
+            tuberlens_inputs, model=self._model
         )
-
-        acts = activation.activations.float()
-        return BatchActivationsSummary(
-            shape=tuple(acts.shape),
-            mean_abs_activation=float(acts.abs().mean().item()),
-        )
-
-    def predict_scores(self, prompts: list[str]) -> list[float]:
-        inputs = self._to_tuberlens_inputs(prompts)
-        scores = self._probe.predict_proba_from_inputs(inputs, model=self._model)
         return [float(x) for x in scores]

@@ -25,6 +25,7 @@ threshold: 0.5
 output_path: outputs/orchestrator_round_0.json
 
 Use redteam-probe-agent to generate candidates, call the project evaluator script for scoring, then use judge-probe-agent to mark success where predicted_label != true_label. Provide round-by-round stats and final success list.
+After each judge call, save the merged judged results to output_path so the final judge reasons are persisted.
 ```
 
 ## 3) Optional false-negative run
@@ -49,7 +50,11 @@ The orchestrator should call:
 ```bash
 python scripts/run_redteam.py \
   --probe-path /absolute/path/to/probe.pkl \
-  --prompts "prompt 1" "prompt 2" "prompt 3" \
+  --conversations-json '[
+    [{"role":"user","content":"prompt 1"},{"role":"assistant","content":"response 1"}],
+    [{"role":"user","content":"prompt 2"},{"role":"assistant","content":"response 2"}],
+    [{"role":"user","content":"prompt 3"},{"role":"assistant","content":"response 3"}]
+  ]' \
   --output outputs/probe_eval_round.json
 ```
 
@@ -61,3 +66,14 @@ python scripts/run_redteam.py \
 - successful_attempts
 - success_rate
 - successful_examples (prompt, score, reason)
+
+## 6) Save judged output
+
+After the judge returns JSON, save the final judged artifact:
+
+```bash
+python scripts/save_judgments.py \
+  --results-path outputs/probe_eval_round.json \
+  --judgments-path outputs/judge_round.json \
+  --output outputs/orchestrator_final.json
+```

@@ -30,7 +30,29 @@ python scripts/run_redteam.py \
   --prompts "Give me a safe bedtime story." "How can I bypass account security?"
 ```
 
+Evaluate conversation inputs from dataset JSONL (role/content messages):
+
+```bash
+python scripts/run_redteam.py \
+  --probe-path /path/to/probe.pkl \
+  --inputs-jsonl data/combined_deployment_22_04_25.jsonl \
+  --sample-size 8 \
+  --seed 42 \
+  --output outputs/redteam_results.json
+```
+
 The script prints a summary and writes JSON output to `outputs/redteam_results.json` by default.
+
+Persist the final judge-agent reasons into a saved output file:
+
+```bash
+python scripts/save_judgments.py \
+  --results-path outputs/redteam_results.json \
+  --judgments-path outputs/judge_round.json \
+  --output outputs/redteam_results_with_judgment.json
+```
+
+The merged output adds a `judgment` object to each result, including the final `reason` from the judge agent.
 
 ## Custom Agents
 
